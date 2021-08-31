@@ -3,6 +3,7 @@ name = "video_to_slides"
 version = "0.1.0"
 description = "Convert video to pdf slides."
 authors = ["0scarB <oscarb@protonmail.com>"]
+readme="README.md"
 license = "MIT"
 homepage="https://github.com/0scarB/video-to-slides"
 repository="https://github.com/0scarB/video-to-slides"
