@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "video_to_slides"
+version = "0.1.0"
+description = "Convert video to pdf slides."
+authors = ["0scarB <oscarb@protonmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.7,<4.0"
+opencv-python = "^4.5.3"
+pytesseract = "^0.3.8"
+PyMuPDF = "^1.18.17"
+rapidfuzz = "^1.5.0"
+click = {version = "^8.0.1", optional = true}
+tqdm = {version = "^4.62.2", optional = true}
+tesseract = "^0.1.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+
+[tool.poetry.scripts]
+video-to-slides = "video_to_slides:cli"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
