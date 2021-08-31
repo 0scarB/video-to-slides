@@ -4,6 +4,21 @@ version = "0.1.0"
 description = "Convert video to pdf slides."
 authors = ["0scarB <oscarb@protonmail.com>"]
 license = "MIT"
+homepage="https://github.com/0scarB/video-to-slides"
+repository="https://github.com/0scarB/video-to-slides"
+documentation="https://github.com/0scarB/video-to-slides"
+keywords = [
+    "video",
+    "pdf",
+    "slides",
+    "convert",
+    "presentation",
+]
+classifiers = [
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Environment :: Console",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
