@@ -1,29 +1,40 @@
 from collections import deque
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Deque
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Union
 
 import cv2
 import fitz
 import numpy as np
 import pytesseract
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image
+from PIL import ImageChops
+from PIL import ImageFilter
 from rapidfuzz import fuzz
 
 try:
     from tqdm import tqdm
 
-    DEFAULT_SHOW_PROGRESS_BAR = True
+    DEFAULT_SHOW_PROGRESS_BAR: bool = True
     has_tqdm = True
 except ImportError:
     DEFAULT_SHOW_PROGRESS_BAR = False
     has_tqdm = False
 
-DEFAULT_VISUAL_DIFF_THRESHOLD = 0.05
-DEFAULT_VISUAL_DIFF_CHECK_TEXT_THRESHOLD = 0.01
-DEFAULT_TEXT_DIFF_THRESHOLD = 0.3
-DEFAULT_VISUAL_DIFF_BLUR_RADIUS = 2
-DEFAULT_TEXT_LANG = "eng"
-DEFAULT_EVERY_NTH_FRAME = 30
+DEFAULT_VISUAL_DIFF_THRESHOLD: float = 0.05
+DEFAULT_VISUAL_DIFF_CHECK_TEXT_THRESHOLD: float = 0.01
+DEFAULT_TEXT_DIFF_THRESHOLD: float = 0.3
+DEFAULT_VISUAL_DIFF_BLUR_RADIUS: int = 2
+DEFAULT_TEXT_LANG: str = "eng"
+DEFAULT_EVERY_NTH_FRAME: int = 30
+
+
+PathOrStr = Union[Path, str]
+
 
 try:
     import click
@@ -107,17 +118,17 @@ try:
         required=False,
     )
     def cli(
-            visual_diff_threshold,
-            visual_diff_check_text_threshold,
-            text_diff_threshold,
-            visual_diff_blur_radius,
-            text_diff_lang,
-            every_nth_frame,
-            show_progress_bar,
-            display_video,
-            video_path,
-            pdf_dst_path,
-    ):
+            visual_diff_threshold: float,
+            visual_diff_check_text_threshold: float,
+            text_diff_threshold: float,
+            visual_diff_blur_radius: int,
+            text_diff_lang: str,
+            every_nth_frame: int,
+            show_progress_bar: bool,
+            display_video: bool,
+            video_path: PathOrStr,
+            pdf_dst_path: PathOrStr,
+    ) -> None:
         """Convert a video of a presentation to a pdf of the slides."""
         convert_video_to_pdf_slides(
             video_path,
@@ -139,10 +150,10 @@ except ImportError as click_import_err:
 
 
 def convert_video_to_pdf_slides(
-        video_path,
-        pdf_dst_path=None,
-        show_progress_bar=DEFAULT_SHOW_PROGRESS_BAR, **kwargs
-):
+        video_path: PathOrStr,
+        pdf_dst_path: Optional[PathOrStr] = None,
+        show_progress_bar: bool = DEFAULT_SHOW_PROGRESS_BAR, **kwargs
+) -> None:
     """Convert a video of a presentation to a pdf of the slides."""
     if pdf_dst_path is None:
         pdf_dst_path = get_pdf_dst_path_from_video_path(video_path)
@@ -178,13 +189,17 @@ def convert_video_to_pdf_slides(
         progress_bar.close()
 
 
-def get_pdf_dst_path_from_video_path(video_path):
+def get_pdf_dst_path_from_video_path(video_path: PathOrStr) -> str:
     video_path = Path(video_path)
     return f"{video_path.stem}.pdf"
 
 
-def get_slide_images_from_video(video_path, compare_max_last_slides_n=4, progress_bar=None, **kwargs):
-    old_slide_images = deque(maxlen=compare_max_last_slides_n)
+def get_slide_images_from_video(
+        video_path: PathOrStr,
+        compare_max_last_slides_n: int = 4,
+        progress_bar: Optional[tqdm] = None, **kwargs
+) -> Iterator[Image]:
+    old_slide_images: Deque[Image] = deque(maxlen=compare_max_last_slides_n)
     for image in get_images_from_video(video_path, progress_bar=progress_bar, **kwargs):
         if is_image_new_slide(old_slide_images, image, **kwargs):
             yield image
@@ -192,13 +207,13 @@ def get_slide_images_from_video(video_path, compare_max_last_slides_n=4, progres
 
 
 def is_image_new_slide(
-        old_slide_images,
-        new_image,
-        visual_diff_threshold=DEFAULT_VISUAL_DIFF_THRESHOLD,
-        visual_diff_check_text_threshold=DEFAULT_VISUAL_DIFF_CHECK_TEXT_THRESHOLD,
-        text_diff_threshold=DEFAULT_TEXT_DIFF_THRESHOLD,
+        old_slide_images: Deque[Image],
+        new_image: Image,
+        visual_diff_threshold: float = DEFAULT_VISUAL_DIFF_THRESHOLD,
+        visual_diff_check_text_threshold: float = DEFAULT_VISUAL_DIFF_CHECK_TEXT_THRESHOLD,
+        text_diff_threshold: float = DEFAULT_TEXT_DIFF_THRESHOLD,
         **kwargs
-):
+) -> bool:
     for old_slide_image in old_slide_images:
         visual_delta = get_images_avg_pixel_diff(old_slide_image, new_image, **kwargs)
         if visual_delta >= visual_diff_threshold:
@@ -214,29 +229,29 @@ def is_image_new_slide(
     return True
 
 
-def get_images_text_diff(image1, image2, **kwargs):
+def get_images_text_diff(image1: Image, image2: Image, **kwargs) -> float:
     image_string1 = get_normalized_image_string(image1, **kwargs)
     image_string2 = get_normalized_image_string(image2, **kwargs)
 
     return 1 - fuzz.ratio(image_string1, image_string2) / 100
 
 
-def get_normalized_image_string(image, text_diff_lang=DEFAULT_TEXT_LANG, **kwargs):
+def get_normalized_image_string(image: Image, text_diff_lang: str = DEFAULT_TEXT_LANG, **kwargs) -> str:
     image_string = pytesseract.image_to_string(image, lang=text_diff_lang)
 
     return normalize_image_string(image_string)
 
 
-def normalize_image_string(image_string):
+def normalize_image_string(image_string: str) -> str:
     return "".join(char for char in image_string.lower() if char.isalpha())
 
 
 def get_images_avg_pixel_diff(
-        image1,
-        image2,
-        visual_diff_blur_radius=DEFAULT_VISUAL_DIFF_BLUR_RADIUS,
+        image1: Image,
+        image2: Image,
+        visual_diff_blur_radius: int = DEFAULT_VISUAL_DIFF_BLUR_RADIUS,
         **kwargs
-):
+) -> float:
     # Blur images so noise from video has less of an effect
     blurred_image1 = blur_image(image1, radius=visual_diff_blur_radius)
     blurred_image2 = blur_image(image2, radius=visual_diff_blur_radius)
@@ -246,17 +261,17 @@ def get_images_avg_pixel_diff(
     return abs(127 - np.array(gray_diff).mean()) / 128
 
 
-def blur_image(image, radius):
+def blur_image(image: Image, radius: int) -> Image:
     return image.filter(ImageFilter.GaussianBlur(radius=radius))
 
 
 def get_images_from_video(
-        video_path,
-        every_nth_frame=DEFAULT_EVERY_NTH_FRAME,
-        display_video=DEFAULT_EVERY_NTH_FRAME,
-        progress_bar=None,
+        video_path: PathOrStr,
+        every_nth_frame: int = DEFAULT_EVERY_NTH_FRAME,
+        display_video: bool = False,
+        progress_bar: Optional[tqdm] = None,
         **kwargs
-):
+) -> Iterator[Image]:
     cap = cv2.VideoCapture(video_path)
 
     if progress_bar is not None:
@@ -294,32 +309,32 @@ def get_images_from_video(
     cv2.destroyAllWindows()
 
 
-def convert_frame_to_image(frame):
+def convert_frame_to_image(frame) -> Image:
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     return Image.fromarray(frame)
 
 
-def convert_image_to_ocr_pdf(image, name):
+def convert_image_to_ocr_pdf(image: Image, name: PathOrStr) -> None:
     pdf = pytesseract.image_to_pdf_or_hocr(image, extension='pdf')
     with open(name, 'w+b') as f:
-        f.write(pdf)  # pdf type is bytes by default
+        f.write(pdf)
 
 
 @contextmanager
-def tmp_dir(path):
+def tmp_dir(path: PathOrStr) -> Iterator[Path]:
     try:
         yield create_dir(path)
     finally:
         remove_dir(path)
 
 
-def create_dir(path):
+def create_dir(path: PathOrStr) -> Path:
     path = Path(path)
     path.mkdir(parents=True)
     return path
 
 
-def remove_dir(path):
+def remove_dir(path: PathOrStr) -> None:
     path = Path(path)
     for child in path.glob("*"):
         if child.is_file():
@@ -329,7 +344,7 @@ def remove_dir(path):
     path.rmdir()
 
 
-def merge_pdfs(pdf_paths, dst_path):
+def merge_pdfs(pdf_paths: List[Path], dst_path: PathOrStr) -> None:
     merge_pdf = None
     try:
         merged_pdf = fitz.open()

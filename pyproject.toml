@@ -33,6 +33,7 @@ tesseract = "^0.1.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
+pre-commit = "^2.14.1"
 
 [tool.poetry.scripts]
 video-to-slides = "video_to_slides:cli"

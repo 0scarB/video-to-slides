@@ -2,4 +2,5 @@ __pycache__/
 *.py[cod]
 dist/
 .pytest_cache/
+.mypy_cache/
 poetry.lock
